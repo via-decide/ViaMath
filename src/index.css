@@ -48,5 +48,8 @@ body {
 }
 
 .gta-title {
-  @apply font-black italic uppercase tracking-tighter;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
 }
