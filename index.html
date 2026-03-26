@@ -3,176 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ViaMath | Journey Through Math</title>
+    <title>ViaMath | The Historical Trail</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.1/p5.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #000000;
+            --bg: #010102;
             --accent: #00E5FF;
-            --glass: rgba(255, 255, 255, 0.05);
+            --glass: rgba(255, 255, 255, 0.04);
             --glass-border: rgba(255, 255, 255, 0.08);
         }
 
-        * {
-            margin: 0; padding: 0; box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: #fff; overflow: hidden; user-select: none; }
+
+        /* The Kingshot "Sub-Game" Historical Trail */
+        .trail-container {
+            height: 100vh; overflow-y: scroll;
+            scroll-snap-type: y mandatory; scrollbar-width: none;
+            scroll-behavior: smooth;
+        }
+        .trail-container::-webkit-scrollbar { display: none; }
+
+        .character-stop {
+            height: 100vh; width: 100%;
+            scroll-snap-align: start; position: relative;
+            display: flex; flex-direction: column; justify-content: flex-end; padding: 60px;
         }
 
-        body {
-            background: var(--bg);
-            color: #fff;
-            overflow: hidden;
-            user-select: none;
-            cursor: pointer;
+        /* Continuous Vertical Timeline Line */
+        .timeline-line {
+            position: fixed; left: 60px; top: 0; width: 2px; height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.1) 10%, rgba(255,255,255,0.1) 90%, transparent);
+            z-index: 5;
+        }
+        .timeline-node {
+            position: absolute; left: -6px; top: 30%; width: 14px; height: 14px;
+            border-radius: 50%; background: var(--accent);
+            box-shadow: 0 0 15px var(--accent); transition: all 0.5s;
         }
 
-        /* Snap-Scroll Feed */
-        .feed {
-            height: 100vh;
-            overflow-y: scroll;
-            scroll-snap-type: y mandatory;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-        .feed::-webkit-scrollbar { display: none; }
-
-        .slide {
-            height: 100vh;
-            width: 100%;
-            scroll-snap-align: start;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 50px;
-            overflow: hidden;
+        /* Kingshot Character Title FX */
+        .char-id-bg {
+            position: absolute; top: 15%; right: -5%;
+            font-size: 25rem; font-weight: 900; line-height: 1;
+            color: rgba(255,255,255,0.02); pointer-events: none; z-index: -1;
+            text-transform: uppercase; font-style: italic; white-space: nowrap;
+            transition: transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
-        /* High-End Typography */
-        .gta-title {
-            font-size: clamp(4rem, 12vw, 8rem);
-            font-weight: 900;
-            font-style: italic;
-            text-transform: uppercase;
-            line-height: 0.8;
-            letter-spacing: -6px;
-            margin-bottom: 20px;
-            text-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        .gta-text {
+            font-size: clamp(5rem, 15vw, 12rem);
+            font-weight: 900; font-style: italic; text-transform: uppercase;
+            line-height: 0.75; letter-spacing: -8px; margin-bottom: 30px;
+            filter: drop-shadow(0 20px 40px rgba(0,0,0,0.8));
         }
 
         .tagline {
-            font-size: clamp(0.9rem, 1.8vw, 1.2rem);
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.6);
-            max-width: 500px;
-            margin-bottom: 40px;
-            line-height: 1.4;
+            font-size: 1.1rem; font-weight: 700; color: rgba(255,255,255,0.4);
+            max-width: 500px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 2px;
         }
 
-        .period-header {
-            font-size: 0.75rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-            color: rgba(255, 255, 255, 0.4);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        /* Collection Buttons */
+        .btn-stack { display: flex; flex-direction: column; gap: 15px; max-width: 320px; z-index: 20; }
+        .btn {
+            background: var(--glass); border: 1px solid var(--glass-border);
+            padding: 24px 30px; border-radius: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: 0.4s; backdrop-filter: blur(50px);
         }
-        .period-header::before { content: ""; width: 40px; height: 3px; background: var(--accent); border-radius: 99px; }
+        .btn:hover { background: #fff; color: #000; transform: scale(1.03) translateX(15px); }
+        .btn span { font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 4px; }
 
-        /* Modern Glass Menu */
-        .menu {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            max-width: 360px;
-            z-index: 10;
-        }
+        /* HUD */
+        header { position: fixed; top: 0; left: 0; width: 100%; padding: 40px 60px; z-index: 100; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+        .logo { font-weight: 900; font-size: 1.2rem; letter-spacing: 5px; font-style: italic; pointer-events: auto; }
+        .hud-year { font-weight: 900; font-size: 0.8rem; color: rgba(255,255,255,0.4); letter-spacing: 3px; }
 
-        .option {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            padding: 26px;
-            border-radius: 28px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-            backdrop-filter: blur(40px);
-        }
-
-        .option:hover {
-            background: #fff;
-            color: #000;
-            transform: scale(1.02) translateX(10px);
-        }
-
-        .option span { font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; }
-
-        /* Navigation Header */
-        header {
-            position: fixed;
-            top: 0; left: 0; width: 100%;
-            padding: 40px 50px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 50;
-        }
-
-        .logo { font-weight: 900; font-size: 1.2rem; letter-spacing: 4px; font-style: italic; }
-
-        /* Drawer Overlay (Chat Only) */
+        /* Immersive Drawer (Sub-Game Style) */
         .drawer {
-            position: fixed;
-            bottom: 0; left: 0; width: 100%; height: 90vh;
-            background: #050508;
-            border-radius: 44px 44px 0 0;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 90vh;
+            background: #000000; border-radius: 40px 40px 0 0;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
-            transform: translateY(105%);
-            transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1);
-            z-index: 100;
-            display: flex; flex-direction: column; padding: 40px;
+            transform: translateY(110%);
+            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: 1000; display: flex; flex-direction: column;
         }
-        .drawer.active { transform: translateY(0); }
+        .drawer.open { transform: translateY(0); }
 
-        .drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-        .drawer-title { font-weight: 900; text-transform: uppercase; letter-spacing: 4px; font-size: 0.8rem; }
-        .close-btn { background: rgba(255, 255, 255, 0.05); padding: 10px 20px; border-radius: 12px; cursor: pointer; font-size: 0.6rem; font-weight: 900; text-transform: uppercase; }
+        /* Act Engine HUD */
+        #saga-content { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 60px; position: relative; }
+        .saga-indicator { color: var(--accent); font-weight: 900; font-size: 0.7rem; letter-spacing: 5px; margin-bottom: 15px; }
+        .saga-title { font-size: 4rem; font-weight: 900; font-style: italic; text-transform: uppercase; line-height: 0.9; margin-bottom: 20px; }
+        .saga-desc { font-size: 1.2rem; line-height: 1.7; color: rgba(255,255,255,0.6); max-width: 600px; margin-bottom: 50px; }
+        .tap-prompt { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; }
 
-        .chat-container { flex: 1; display: flex; flex-direction: column; }
-        .messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 40px; }
-        .msg { max-width: 85%; padding: 20px 24px; border-radius: 24px; font-size: 0.95rem; line-height: 1.6; }
-        .msg.ai { background: rgba(255, 255, 255, 0.05); align-self: flex-start; border: 1px solid rgba(255, 255, 255, 0.05); }
-        .msg.user { background: #fff; color: #000; align-self: flex-end; font-weight: 700; }
-        input { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 24px 30px; border-radius: 24px; color: #fff; width: 100%; font-size: 1rem; outline: none; }
+        /* Chat System */
+        #chat-content { flex: 1; padding: 40px; display: flex; flex-direction: column; }
+        .chat-msgs { flex: 1; overflow-y: auto; padding-bottom: 40px; display: flex; flex-direction: column; gap: 20px; }
+        .chat-msg { max-width: 80%; padding: 22px 28px; border-radius: 20px; font-size: 0.95rem; line-height: 1.6; }
+        .chat-msg.ai { background: rgba(255,255,255,0.05); align-self: flex-start; }
+        .chat-msg.user { background: #fff; color: #000; align-self: flex-end; font-weight: 800; }
+        .chat-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 24px; border-radius: 20px; color: #fff; font-size: 1rem; outline: none; }
 
-        #p5-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        #canvas-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; opacity: 0.5; }
     </style>
 </head>
 <body>
 
     <header>
         <div class="logo">VIAMATH</div>
-        <div class="drawer-title" style="color: rgba(255,255,255,0.3)">Feed v3.0</div>
+        <div class="hud-year" id="hud-timeline">APPROACHING HISTORY</div>
     </header>
 
-    <div id="p5-wrap"></div>
-    <div class="feed" id="feed-root"></div>
+    <div class="timeline-line"><div class="timeline-node" id="timeline-node"></div></div>
+    <div id="canvas-bg"></div>
 
-    <!-- Interface Drawer -->
-    <div class="drawer" id="chat-drawer">
-        <div class="drawer-header">
-            <div class="drawer-title" id="drawer-char-name">Mathematician</div>
-            <div class="close-btn" onclick="closeDrawer()">Disconnect</div>
+    <div class="trail-container" id="trail" onscroll="syncTrail()"></div>
+
+    <!-- Collection Interaction Drawer -->
+    <div class="drawer" id="drawer">
+        <div id="saga-content" style="display:none;">
+            <div class="tap-prompt" onclick="nextAct()"></div>
+            <div class="saga-indicator" id="saga-act">SAGA: ACT I</div>
+            <div class="saga-title" id="saga-title">THE FIRST VISION</div>
+            <div class="saga-desc" id="saga-text">...</div>
+            <div style="font-size: 0.6rem; font-weight: 900; letter-spacing: 5px; opacity: 0.2; text-transform: uppercase;">Tap to Advance Story</div>
         </div>
-        <div class="chat-container">
-            <div class="messages" id="chat-msgs"></div>
-            <input type="text" id="chat-in" placeholder="Ask a question..." onkeydown="if(event.key==='Enter') sendChat()">
+        <div id="chat-content" style="display:none;">
+            <div style="font-size: 0.6rem; font-weight: 900; letter-spacing: 5px; opacity: 0.4; margin-bottom: 20px; text-transform: uppercase;">Character Uplink Established</div>
+            <div class="chat-msgs" id="chat-box"></div>
+            <input type="text" class="chat-input" id="chat-in" placeholder="Query the Oracle..." onkeydown="if(event.key==='Enter') sendChat()">
+            <div onclick="closeDrawer()" style="margin-top:20px; cursor:pointer; font-size: 0.6rem; font-weight: 900; letter-spacing: 3px; opacity: 0.2; text-align: center; text-transform: uppercase;">Disconnect Session</div>
         </div>
     </div>
 
@@ -180,84 +142,121 @@
         const API_KEY = "AIzaSyC6sJmEyQyyLKZs0BE21Xi4w8lYasVfNyw";
 
         const DB = [
-            { id: 'al-khwarizmi', name: 'Al-Khwarizmi', period: '780 AD', accent: '#FFD700', tagline: 'The Father of Algebra.' },
-            { id: 'archimedes', name: 'Archimedes', period: '287 BC', accent: '#FF7F50', tagline: 'Give me a lever, and I will move the Earth.' },
-            { id: 'aryabhata', name: 'Aryabhata', period: '476 AD', accent: '#00E5FF', tagline: 'The Sage who mastered Zero and the Stars.' },
-            { id: 'brahmagupta', name: 'Brahmagupta', period: '598 AD', accent: '#7000FF', tagline: 'Calculating the Infinite with pure reason.' },
-            { id: 'euclid', name: 'Euclid', period: '300 BC', accent: '#00FF88', tagline: 'The Geometric Architect of Reality.' },
-            { id: 'hypatia', name: 'Hypatia', period: '350 AD', accent: '#FF007A', tagline: 'The Last Light of Alexandria.' },
-            { id: 'plato', name: 'Plato', period: '427 BC', accent: '#E100FF', tagline: 'Mathematics is the language of higher forms.' },
-            { id: 'ptolemy', name: 'Ptolemy', period: '100 AD', accent: '#0088FF', tagline: 'Mapping the Cosmos and the Almagest.' },
-            { id: 'pythagoras', name: 'Pythagoras', period: '570 BC', accent: '#FF4E00', tagline: 'All is Number. The Harmony of the Spheres.' },
-            { id: 'thales', name: 'Thales', period: '624 BC', accent: '#00FFFF', tagline: 'The first to seek the natural cause.' }
+            { id: 'thales', year: '624 BC', name: 'Thales', accent: '#00E5FF', tagline: 'Measuring existence with a single shadow.', acts: [
+                { t: 'THE FIRST VISION', d: 'Thales was the first to look at nature and see logic, not gods. He predicted an eclipse and proved the world has laws.' },
+                { t: 'SHADOW SECRETS', d: 'By measuring a stick and its shadow, he mapped the height of the Great Pyramid. Space belongs to the measurable.' }
+            ]},
+            { id: 'pythagoras', year: '570 BC', name: 'Pythagoras', accent: '#E100FF', tagline: 'The Universe sounds like a perfect vibration.', acts: [
+                { t: 'NUMBER RELIGION', d: 'To Pythagoras, math was sacred. He saw the link between musical harmony and whole number ratios.' },
+                { t: 'SACRED GEOMETRY', d: 'The triangle theorem he gathered from Egypt became the foundation for every building ever raised.' }
+            ]},
+            { id: 'archimedes', year: '287 BC', name: 'Archimedes', accent: '#FF7F50', tagline: 'The Engineer who redefined human force.', acts: [
+                { t: 'WAR MACHINES', d: 'A mad genius who turned light and levers into weapons to hold back the Roman Empire.' },
+                { t: 'EUREKA!', d: 'Realizing displacement meant volume, he ran through the streets to change science forever.' }
+            ]},
+            { id: 'ramanujan', year: '1887 AD', name: 'Ramanujan', accent: '#FFD700', tagline: 'Infinite patterns written in dreams.', acts: [
+                { t: 'DREAM EQUATIONS', d: 'A self-taught clerk who saw formulas on his tongue. He spoke to infinity as if it were a childhood friend.' },
+                { t: 'TAXI CAB 1729', d: 'Every number was his personal friend. He derived centuries of math in a single lifetime.' }
+            ]}
         ];
 
         let activeChar = null;
+        let actIdx = 0;
 
-        function buildFeed() {
-            const root = document.getElementById('feed-root');
+        function buildTrail() {
+            const root = document.getElementById('trail');
             DB.forEach((c, idx) => {
                 const el = document.createElement('div');
-                el.className = 'slide';
+                el.className = 'character-stop';
                 el.innerHTML = `
-                    <div class="period-header" style="--accent: ${c.accent}">${c.period}</div>
-                    <div class="gta-title">${c.name}</div>
+                    <div class="char-id-bg" id="bg-${c.id}">${c.name[0]}</div>
+                    <div style="font-weight:900; font-size:0.7rem; color:${c.accent}; letter-spacing:4px; margin-bottom:8px;">${c.year}</div>
+                    <div class="gta-text">${c.name}</div>
                     <div class="tagline">${c.tagline}</div>
-                    <div class="menu">
-                        <!-- Redirects to existing high-end /people subfolder -->
-                        <div class="option" onclick="window.location.href='people/${c.id}/index.html'"><span class="option-label">Know About Me</span><span>→</span></div>
-                        <div class="option" onclick="openChat('${c.id}')"><span class="option-label">Talk / Call</span><span>→</span></div>
+                    <div class="btn-stack" style="--accent: ${c.accent}">
+                        <div class="btn" onclick="openSaga('${c.id}')"><span style="color:${c.accent}">Meet & Know Me</span><span>➔</span></div>
+                        <div class="btn" onclick="openChat('${c.id}')"><span>Talk Session</span><span>➔</span></div>
+                        <!-- Redirects to your high-end existing pages -->
+                        <div class="btn" onclick="window.location.href='people/${c.id}/index.html'"><span>Enter Archive</span><span>➔</span></div>
                     </div>
                 `;
                 root.appendChild(el);
             });
         }
 
-        function openChat(id) {
-            activeChar = DB.find(c => c.id === id);
-            document.getElementById('drawer-char-name').innerText = activeChar.name + " (Live Session)";
-            document.getElementById('chat-drawer').classList.add('active');
-            document.getElementById('chat-msgs').innerHTML = `<div class="msg ai">I am ${activeChar.name}. What shall we solve together?</div>`;
+        function syncTrail() {
+            const scroll = document.getElementById('trail').scrollTop;
+            const h = window.innerHeight;
+            const progress = (scroll % h) / h;
+            const currentIdx = Math.round(scroll / h);
+            const char = DB[currentIdx];
+
+            // Parallax BG FX
+            document.querySelectorAll('.char-id-bg').forEach(bg => {
+                bg.style.transform = `translateY(${(scroll * 0.2) % 200}px)`;
+            });
+
+            // HUD Sync
+            document.getElementById('hud-timeline').innerText = char ? `${char.year} — ${char.name.toUpperCase()}` : "HISTORY TRAIL";
+            document.getElementById('timeline-node').style.top = (30 + (progress * 50)) + "%";
+            document.documentElement.style.setProperty('--accent', char ? char.accent : '#00E5FF');
         }
 
-        function closeDrawer() { document.getElementById('chat-drawer').classList.remove('active'); }
+        function openSaga(id) {
+            activeChar = DB.find(c => c.id === id); actIdx = 0;
+            document.getElementById('saga-content').style.display = 'flex';
+            document.getElementById('chat-content').style.display = 'none';
+            document.getElementById('drawer').classList.add('open');
+            renderSaga();
+        }
+
+        function nextAct() { 
+            actIdx++; 
+            if(actIdx >= activeChar.acts.length) { closeDrawer(); return; }
+            renderSaga();
+        }
+
+        function renderSaga() {
+            const a = activeChar.acts[actIdx];
+            document.getElementById('saga-act').innerText = `SAGA: ${activeChar.name.toUpperCase()} / ACT ${actIdx + 1}`;
+            document.getElementById('saga-title').innerText = a.t;
+            document.getElementById('saga-text').innerText = a.d;
+        }
+
+        function openChat(id) {
+            activeChar = DB.find(c => c.id === id);
+            document.getElementById('saga-content').style.display = 'none';
+            document.getElementById('chat-content').style.display = 'flex';
+            document.getElementById('drawer').classList.add('open');
+            document.getElementById('chat-box').innerHTML = `<div class="chat-msg ai">Connection established with ${activeChar.name}. Pose your inquiry.</div>`;
+        }
+
+        function closeDrawer() { document.getElementById('drawer').classList.remove('open'); }
 
         async function sendChat() {
             const input = document.getElementById('chat-in');
-            const box = document.getElementById('chat-msgs');
-            const txt = input.value.trim();
-            if(!txt) return;
-
+            const box = document.getElementById('chat-box');
+            const txt = input.value.trim(); if(!txt) return;
             box.innerHTML += `<div class="msg user">${txt}</div>`;
-            input.value = '';
-            box.scrollTop = box.scrollHeight;
-
+            input.value = ''; box.scrollTop = box.scrollHeight;
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: `You are ${activeChar.name}, the historical mathematician. Keep responses brief, historical, and mysterious. User input: ${txt}` }] }] })
+                const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: `You are ${activeChar.name}. Respond like a wise legend. User: ${txt}` }] }] })
                 });
                 const d = await res.json();
-                box.innerHTML += `<div class="msg ai">${d.candidates[0].content.parts[0].text}</div>`;
-            } catch(e) { box.innerHTML += `<div class="msg ai">The stars are too silent today.</div>`; }
+                box.innerHTML += `<div class="chat-msg ai">${d.candidates[0].content.parts[0].text}</div>`;
+            } catch(e) { box.innerHTML += `<div class="chat-msg ai">Transmission failed.</div>`; }
             box.scrollTop = box.scrollHeight;
         }
 
-        new p5((p) => {
-            let pts = [];
-            p.setup = () => { p.createCanvas(p.windowWidth, p.windowHeight).parent('p5-wrap'); for(let i=0; i<40; i++) pts.push({x: p.random(p.width), y: p.random(p.height), vx: p.random(-0.3, 0.3), vy: p.random(-0.3, 0.3), r: p.random(1, 4)}); };
-            p.draw = () => { 
-                p.background(3, 3, 5);
-                pts.forEach(pt => {
-                    pt.x += pt.vx; pt.y += pt.vy;
-                    if(pt.x<0) pt.x=p.width; if(pt.y<0) pt.y=p.height;
-                    p.fill(255, 12); p.noStroke(); p.circle(pt.x, pt.y, pt.r);
-                });
-            };
+        new p5(p => {
+            let stars = [];
+            p.setup = () => { p.createCanvas(p.windowWidth, p.windowHeight).parent('canvas-bg'); for(let i=0; i<50; i++) stars.push({x:p.random(p.width), y:p.random(p.height), sz:p.random(1,3)}); };
+            p.draw = () => { p.background(1,1,2); p.fill(255, 15); p.noStroke(); stars.forEach(s => { p.circle(s.x, s.y, s.sz); }); };
         });
 
-        buildFeed();
+        buildTrail();
     </script>
 </body>
 </html>
