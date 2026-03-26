@@ -1,18 +1,353 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ViaMath | Journey Through Math</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-black text-white">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-slate-950 text-slate-100 selection:bg-amber-500/30">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViaMath | The Legends of Math</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.1/p5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --accent: #00E5FF;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        /* Snap-Scroll Feed */
+        .feed {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .feed::-webkit-scrollbar { display: none; }
+
+        .slide {
+            height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 50px;
+            overflow: hidden;
+        }
+
+        /* High-End Typography */
+        .gta-title {
+            font-size: clamp(5rem, 15vw, 10rem);
+            font-weight: 900;
+            font-style: italic;
+            text-transform: uppercase;
+            line-height: 0.8;
+            letter-spacing: -6px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .tagline {
+            font-size: clamp(1rem, 2vw, 1.4rem);
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.6);
+            max-width: 500px;
+            margin-bottom: 40px;
+            line-height: 1.4;
+        }
+
+        .period-header {
+            font-size: 0.75rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .period-header::before { content: ""; width: 40px; height: 3px; background: var(--accent); border-radius: 99px; }
+
+        /* Modern Glass Menu */
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 360px;
+            z-index: 10;
+        }
+
+        .option {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 26px;
+            border-radius: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            backdrop-filter: blur(40px);
+        }
+
+        .option:hover {
+            background: #fff;
+            color: #000;
+            transform: scale(1.02) translateX(10px);
+        }
+
+        .option:active { transform: scale(0.98); }
+
+        .option span { font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* Navigation Header */
+        header {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            padding: 40px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+        }
+
+        .logo { font-weight: 900; font-size: 1.2rem; letter-spacing: 4px; font-style: italic; }
+
+        /* Drawer Overlay */
+        .drawer {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%; height: 90vh;
+            background: #050508;
+            border-radius: 44px 44px 0 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateY(105%);
+            transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            padding: 40px;
+        }
+        .drawer.active { transform: translateY(0); }
+
+        .drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .drawer-title { font-weight: 900; text-transform: uppercase; letter-spacing: 4px; font-size: 0.8rem; }
+
+        .close-btn { 
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 20px; border-radius: 12px; cursor: pointer;
+            font-size: 0.6rem; font-weight: 900; text-transform: uppercase; 
+        }
+
+        /* Chat UI */
+        .chat-container { flex: 1; display: flex; flex-direction: column; opacity: 0; pointer-events: none; }
+        .chat-container.active { opacity: 1; pointer-events: auto; }
+
+        .messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 40px; }
+        .msg { max-width: 85%; padding: 20px 24px; border-radius: 24px; font-size: 0.95rem; line-height: 1.6; }
+        .msg.ai { background: rgba(255, 255, 255, 0.05); align-self: flex-start; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .msg.user { background: #fff; color: #000; align-self: flex-end; font-weight: 700; }
+
+        .input-area { position: relative; }
+        input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 24px 30px; border-radius: 24px; color: #fff;
+            width: 100%; font-size: 1rem; outline: none;
+        }
+
+        /* Lore (Saga) UI */
+        .lore-container { flex: 1; display: none; opacity: 0; transition: opacity 0.4s; }
+        .lore-container.active { display: block; opacity: 1; }
+        .lore-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 40px; border-radius: 40px; margin-bottom: 40px;
+        }
+        .lore-title { font-size: 2.5rem; font-weight: 900; line-height: 1; margin-bottom: 20px; text-transform: uppercase; font-style: italic; }
+        .lore-desc { font-size: 1.1rem; color: rgba(255, 255, 255, 0.6); line-height: 1.6; margin-bottom: 30px; }
+        .lore-insight {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 24px; border-radius: 20px; font-style: italic; font-weight: 700; color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* p5 Sketch Background */
+        #p5-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">VIAMATH</div>
+        <div class="drawer-title" style="color: rgba(255,255,255,0.3)">Feed v2.0</div>
+    </header>
+
+    <div id="p5-wrap"></div>
+
+    <div class="feed" id="feed-root"></div>
+
+    <!-- Interface Drawer -->
+    <div class="drawer" id="main-drawer">
+        <div class="drawer-header">
+            <div class="drawer-title" id="drawer-char-name">Mathematician</div>
+            <div class="close-btn" onclick="closeDrawer()">Back to Feed</div>
+        </div>
+
+        <!-- Chat Mode -->
+        <div class="chat-container" id="chat-mode">
+            <div class="messages" id="chat-msgs"></div>
+            <div class="input-area">
+                <input type="text" id="chat-in" placeholder="Ask a question..." onkeydown="if(event.key==='Enter') sendChat()">
+            </div>
+        </div>
+
+        <!-- Lore Mode -->
+        <div class="lore-container" id="lore-mode">
+            <div id="lore-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "AIzaSyC6sJmEyQyyLKZs0BE21Xi4w8lYasVfNyw";
+
+        const DB = [
+            {
+                id: 'thales', name: 'Thales', period: '624 BC', accent: '#00E5FF',
+                tagline: 'The first legend to stop praying and start measuring.',
+                lore: { title: 'The Ancient Shadow', body: 'He measured the pyramids using nothing but a stick and its shadow. Thales proved that geometry is the secret code of space.', insight: 'Similar triangles can measure the heavens.' }
+            },
+            {
+                id: 'pythagoras', name: 'Pythagoras', period: '570 BC', accent: '#E100FF',
+                tagline: 'Leader of a math cult where numbers were gods.',
+                lore: { title: 'Secret Brotherhood', body: 'He discovered the link between music and math. If you play a string, you play a ratio. The universe has a soundtrack.', insight: 'a² + b² = c² is the foundation of reality.' }
+            },
+            {
+                id: 'archimedes', name: 'Archimedes', period: '287 BC', accent: '#FF7F50',
+                tagline: 'The mad engineer who yelled Eureka in the bath.',
+                lore: { title: 'The King of Force', body: 'He invented the screw, the lever, and war machines that tossed Roman ships like toys.', insight: 'Give me a place to stand, and I will move the Earth.' }
+            },
+            {
+                id: 'gauss', name: 'Gauss', period: '1777 AD', accent: '#7000FF',
+                tagline: 'The Prince of Mathematics who saw patterns in chaos.',
+                lore: { title: 'The Bell Curve', body: 'As a child, he summed 1 to 100 in seconds. He later mapped the magnetic poles of our planet.', insight: 'Complexity is just an undiscovered pattern.' }
+            },
+            {
+                id: 'ramanujan', name: 'Ramanujan', period: '1887 AD', accent: '#FFD700',
+                tagline: 'A self-taught clerk who spoke to the Infinite.',
+                lore: { title: 'Dream Equations', body: 'He derived thousands of formulas in his dreams, claiming a goddess wrote secrets on his tongue.', insight: 'An equation has no meaning unless it expresses a thought of God.' }
+            }
+        ];
+
+        let activeChar = null;
+
+        function buildFeed() {
+            const root = document.getElementById('feed-root');
+            DB.forEach(c => {
+                const el = document.createElement('div');
+                el.className = 'slide';
+                el.innerHTML = `
+                    <div class="period-header" style="--accent: ${c.accent}">${c.period}</div>
+                    <div class="gta-title">${c.name}</div>
+                    <div class="tagline">${c.tagline}</div>
+                    <div class="menu">
+                        <div class="option" onclick="openLore('${c.id}')"><span class="option-label">Know About Me</span><span>→</span></div>
+                        <div class="option" onclick="openChat('${c.id}')"><span class="option-label">Talk / Call</span><span>→</span></div>
+                    </div>
+                `;
+                root.appendChild(el);
+            });
+        }
+
+        function openChat(id) {
+            activeChar = DB.find(c => c.id === id);
+            document.getElementById('drawer-char-name').innerText = activeChar.name + " (Live)";
+            document.getElementById('chat-mode').classList.add('active');
+            document.getElementById('lore-mode').classList.remove('active');
+            document.getElementById('main-drawer').classList.add('active');
+            document.getElementById('chat-msgs').innerHTML = `<div class="msg ai">I am ${activeChar.name}. What shall we solve together?</div>`;
+        }
+
+        function openLore(id) {
+            activeChar = DB.find(c => c.id === id);
+            document.getElementById('drawer-char-name').innerText = activeChar.name + " (Lore)";
+            document.getElementById('lore-mode').classList.add('active');
+            document.getElementById('chat-mode').classList.remove('active');
+            document.getElementById('main-drawer').classList.add('active');
+            document.getElementById('lore-content').innerHTML = `
+                <div class="lore-card">
+                    <div class="lore-title">${activeChar.lore.title}</div>
+                    <div class="lore-desc">${activeChar.lore.body}</div>
+                    <div class="lore-insight">"${activeChar.lore.insight}"</div>
+                </div>
+            `;
+        }
+
+        function closeDrawer() { document.getElementById('main-drawer').classList.remove('active'); }
+
+        async function sendChat() {
+            const input = document.getElementById('chat-in');
+            const box = document.getElementById('chat-msgs');
+            const txt = input.value.trim();
+            if(!txt) return;
+
+            box.innerHTML += `<div class="msg user">${txt}</div>`;
+            input.value = '';
+            box.scrollTop = box.scrollHeight;
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: `You are ${activeChar.name}. Respond like a person from your time, deeply philosophical and brief. User: ${txt}` }] }] })
+                });
+                const d = await res.json();
+                box.innerHTML += `<div class="msg ai">${d.candidates[0].content.parts[0].text}</div>`;
+            } catch(e) { 
+                box.innerHTML += `<div class="msg ai">The stars are silent right now.</div>`; 
+            }
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // p5 Performance Sketch
+        new p5((p) => {
+            let pts = [];
+            p.setup = () => {
+                p.createCanvas(p.windowWidth, p.windowHeight).parent('p5-wrap');
+                for(let i=0; i<40; i++) pts.push({x: p.random(p.width), y: p.random(p.height), vx: p.random(-0.4, 0.4), vy: p.random(-0.4, 0.4), r: p.random(1, 3)});
+            };
+            p.draw = () => {
+                p.background(5, 5, 8);
+                p.noStroke();
+                pts.forEach(pt => {
+                    pt.x += pt.vx; pt.y += pt.vy;
+                    if(pt.x<0) pt.x=p.width; if(pt.y<0) pt.y=p.height;
+                    p.fill(255, 12);
+                    p.circle(pt.x, pt.y, pt.r * 2);
+                });
+            };
+        });
+
+        buildFeed();
+    </script>
+</body>
 </html>
