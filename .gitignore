@@ -1,1 +1,26 @@
+# OS
 .DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+package-lock.json
+npm-debug.log
+
+# Build outputs
+dist/
+/android/bin/
+/android/build/
+/android/app/build/
+
+# Do NOT ignore 'www' as it contains our source code in this project
+# /www/
+
+# Capacitor specific
+capacitor.config.json
+capacitor.config.js
+# capacitor.config.ts should stay
+
+# Local environment
+.env
+.env.*
