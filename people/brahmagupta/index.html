@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViaMath | The Master of Zero (Brahmagupta)</title>
+    <script src="../../js/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0; padding: 0; background-color: #0A0505; overflow: hidden;
+            color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        canvas { display: block; }
+
+        /* Act Indicator */
+        #act-indicator {
+            position: absolute; top: 30px; left: 30px;
+            color: #E53935; font-size: 14px; font-weight: bold; letter-spacing: 3px;
+            text-transform: uppercase; z-index: 10;
+            transition: opacity 0.4s ease-in-out; opacity: 1;
+        }
+
+        /* Main Info Box */
+        #label {
+            position: absolute; top: 60px; left: 30px;
+            letter-spacing: 1px; border-left: 4px solid #E53935; 
+            padding-left: 20px; z-index: 10;
+            background: rgba(10, 5, 5, 0.85); padding-right: 20px;
+            padding-bottom: 15px; border-radius: 0 10px 10px 0;
+            backdrop-filter: blur(8px); max-width: 80%;
+            transition: opacity 0.4s ease-in-out; opacity: 1;
+        }
+        h1 { margin: 0; font-size: 26px; font-weight: 300; text-transform: uppercase; color: #fff; }
+        #subtitle { color: #E53935; font-size: 16px; margin-top: 5px; font-weight: bold; letter-spacing: 2px; }
+        #description { color: #ccc; font-size: 15px; margin-top: 10px; max-width: 450px; line-height: 1.6; }
+
+        /* Insight Bar */
+        #insight-bar {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: rgba(255, 202, 40, 0.1);
+            border-top: 1px solid rgba(255, 202, 40, 0.4);
+            padding: 15px 0; text-align: center;
+            font-size: 16px; color: #ddd; letter-spacing: 1px;
+            font-family: monospace; backdrop-filter: blur(5px);
+            transition: opacity 0.4s ease-in-out; opacity: 1;
+        }
+        .highlight { color: #FFCA28; font-weight: bold; }
+
+        /* Tap hint & Logo */
+        #nav-hint {
+            position: absolute; top: 30px; right: 30px;
+            color: #777; font-size: 12px; letter-spacing: 2px;
+            text-transform: uppercase; cursor: pointer;
+            transition: opacity 0.4s ease-in-out; text-align: right;
+        }
+        .viamath-logo { color: #FFCA28; font-weight: bold; font-size: 16px; margin-bottom: 5px; letter-spacing: 3px;}
+
+        @media (max-width: 700px) {
+            #act-indicator { top: 20px; left: 10px; font-size: 12px; }
+            #label { top: 45px; left: 10px; padding-left: 15px; max-width: 90%; }
+            h1 { font-size: 20px; }
+            #subtitle { font-size: 14px; }
+            #description { font-size: 13px; max-width: 100%; }
+            #insight-bar { font-size: 12px; padding: 10px 0; }
+            #nav-hint { top: 10px; right: 10px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body onclick="nextScreen()">
+    <div id="nav-hint">
+        <div class="viamath-logo">VIAMATH</div>
+        Tap anywhere to advance ➔
+    </div>
+    
+    <div id="act-indicator">ACT I: THE OBSERVATORY</div>
+
+    <div id="label">
+        <h1 id="title">Title</h1>
+        <p id="subtitle">Subtitle</p>
+        <p id="description">Description goes here.</p>
+    </div>
+
+    <div id="insight-bar">
+        <span class="highlight">HISTORICAL INSIGHT:</span> <span id="insight-text">Loading...</span>
+    </div>
+
+<script>
+let time = 0;
+let state = 0;
+
+let isTransitioning = false;
+let fadeAlpha = 0;
+let fadeDirection = 0;
+let targetState = 0;
+const FADE_SPEED = 12;
+const TOTAL_SCREENS = 10;
+
+let particles = [];
+
+const content = [
+    // ACT I: HISTORY AND ASTRONOMY
+    {
+        title: "The Scholar of Ujjain", sub: "Brahmagupta (c. 598 – 668 CE)",
+        desc: "Over a century after Aryabhata, the mathematical capital of India shifted to Ujjain. Here, Brahmagupta served as the director of the premier astronomical observatory of the ancient world.",
+        insight: "He observed the stars, but his true genius lay in abstract numbers."
+    },
+    {
+        title: "The Force of the Earth", sub: "Gravity (c. 628 CE)",
+        desc: "Centuries before Isaac Newton, Brahmagupta realized that the Earth was spherical and possessed an invisible attractive force. He wrote: 'Bodies fall towards the earth as it is in the nature of the earth to attract bodies.'",
+        insight: "He proved that water doesn't fall off the 'bottom' of a spherical Earth."
+    },
+    // ACT II: THE INVENTION OF NOTHING & EVERYTHING
+    {
+        title: "The Invention of Zero", sub: "Shunya (शून्य)",
+        desc: "Babylonians and Mayans used a blank space as a placeholder, but Brahmagupta did the unthinkable: He defined Zero as a standalone NUMBER. He was the first human to write the equation: 1 - 1 = 0.",
+        insight: "He gave Nothingness a mathematical identity. 'When zero is added to a number, the number is unchanged.'"
+    },
+    {
+        title: "Fortunes and Debts", sub: "Negative Numbers",
+        desc: "Brahmagupta formalized the concept of Negative Numbers to represent financial debt. He laid down the absolute laws of arithmetic: 'A debt subtracted from zero is a fortune. A fortune subtracted from zero is a debt.'",
+        insight: "He proved: Negative × Negative = Positive. (A debt multiplied by a debt is a fortune)."
+    },
+    {
+        title: "The Infinite Void", sub: "Division by Zero (x / 0)",
+        desc: "He was the first to attempt dividing by zero. He stated that any number divided by zero is 'a quantity with zero as its denominator' (Khacheda). While he couldn't fully solve it, he opened the door to Infinity.",
+        insight: "This exact problem eventually forced humanity to invent Calculus a thousand years later."
+    },
+    // ACT III: GEOMETRY & ALGEBRA
+    {
+        title: "Brahmagupta's Formula", sub: "The Cyclic Quadrilateral",
+        desc: "He formulated a breathtakingly beautiful equation for the area of any four-sided shape inscribed perfectly inside a circle. Area = √[(s-a)(s-b)(s-c)(s-d)], where 's' is the semiperimeter.",
+        insight: "This is the magnificent extension of Heron's formula for triangles."
+    },
+    {
+        title: "The Perpendicular Diagonals", sub: "Brahmagupta's Theorem",
+        desc: "He proved that if a cyclic quadrilateral has diagonals that cross at exactly 90 degrees, drawing a perpendicular line from the intersection to any side will perfectly bisect the opposite side.",
+        insight: "A flawless, hidden symmetry locked inside intersecting geometry."
+    },
+    {
+        title: "Solving the Unsolvable", sub: "Pell's Equation (x² - Ny² = 1)",
+        desc: "He developed the 'Chakravala' (cyclic) method to solve complex second-order equations that demanded whole-number answers. European giants like Euler and Lagrange wouldn't solve these until the 18th century.",
+        insight: "Brahmagupta solved them 1,000 years earlier in ancient India."
+    },
+    {
+        title: "The Journey to Baghdad", sub: "770 CE",
+        desc: "Decades after his death, Caliph Al-Mansur requested Indian scholars to bring their astronomical texts to Baghdad. They brought Brahmagupta's masterpiece. It was translated into Arabic as the 'Sindhind'.",
+        insight: "This book transmitted Zero and the numbers 0-9 to the Islamic Golden Age."
+    },
+    {
+        title: "The Father of Zero", sub: "The Universal Language",
+        desc: "From Ujjain to Baghdad, to Fibonacci in Italy, and finally to the modern digital world. Every computer, every smartphone, and every line of code relies on the 0 and 1. It all traces back to Brahmagupta.",
+        insight: "He gave humanity the numbers to build the future. Welcome to ViaMath."
+    }
+];
+
+function setup() {
+    createCanvas(windowWidth, windowHeight);
+    for(let i=0; i<80; i++) particles.push({x: random(width), y: random(height), s: random(2, 4), a: random(TWO_PI)});
+    updateUI();
+}
+
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+
+function nextScreen() {
+    if (isTransitioning) return;
+    isTransitioning = true;
+    fadeDirection = 1;
+    targetState = (state + 1) % TOTAL_SCREENS;
+    
+    document.getElementById("label").style.opacity = 0;
+    document.getElementById("insight-bar").style.opacity = 0;
+    document.getElementById("nav-hint").style.opacity = 0;
+    document.getElementById("act-indicator").style.opacity = 0;
+}
+
+function updateUI() {
+    document.getElementById("title").innerText = content[state].title;
+    document.getElementById("subtitle").innerText = content[state].sub;
+    document.getElementById("description").innerText = content[state].desc;
+
+    let actInd = document.getElementById("act-indicator");
+    let labelBorder = document.getElementById("label");
+    
+    if (state < 2) {
+        actInd.innerText = "ACT I: THE OBSERVATORY";
+        actInd.style.color = "#E53935"; // Ruby Red
+        labelBorder.style.borderLeftColor = "#E53935";
+    } else if (state < 5) {
+        actInd.innerText = "ACT II: THE INVENTION OF ZERO";
+        actInd.style.color = "#FFCA28"; // Shunya Gold
+        labelBorder.style.borderLeftColor = "#FFCA28";
+    } else {
+        actInd.innerText = "ACT III: THE ALGEBRA OF INFINITY";
+        actInd.style.color = "#42A5F5"; // Mathematical Blue
+        labelBorder.style.borderLeftColor = "#42A5F5";
+    }
+
+    let span = document.querySelector('.highlight');
+    if (state === 9) {
+        span.innerText = "LEGACY:"; span.style.color = "#FFCA28";
+    } else if (state < 2 || state === 8) {
+        span.innerText = "HISTORICAL INSIGHT:"; span.style.color = "#E53935";
+    } else {
+        span.innerText = "MATHEMATICAL GENIUS:"; span.style.color = "#FFCA28";
+    }
+    document.getElementById("insight-text").innerText = content[state].insight;
+}
+
+function getScaleFactor() { return min(1, width / 800); }
+
+function draw() {
+    background(10, 5, 5); // Deep Ruby Night
+
+    // Abstract grid
+    stroke(255, 6); strokeWeight(1);
+    for (let i = 0; i < width; i += 80) line(i, 0, i, height);
+    for (let j = 0; j < height; j += 80) line(0, j, width, j);
+
+    time += 0.02;
+
+    // Ambient floating stardust
+    for(let p of particles) {
+        p.y -= 0.3; p.x += sin(p.a + time) * 0.5;
+        if(p.y < 0) { p.y = height; p.x = random(width); }
+        
+        let cColor;
+        if(state < 2) cColor = color(229, 57, 53, 60);
+        else if (state < 5) cColor = color(255, 202, 40, 60);
+        else cColor = color(66, 165, 245, 60);
+
+        fill(cColor); noStroke();
+        ellipse(p.x, p.y, p.s);
+    }
+
+    // State Router
+    if      (state === 0) drawUjjain();
+    else if (state === 1) drawGravity();
+    else if (state === 2) drawShunya();
+    else if (state === 3) drawFortunesDebts();
+    else if (state === 4) drawDivByZero();
+    else if (state === 5) drawCyclicQuad();
+    else if (state === 6) drawPerpendicularDiag();
+    else if (state === 7) drawPellsEquation();
+    else if (state === 8) drawBaghdad();
+    else if (state === 9) drawLegacy();
+
+    // Cinematic fade overlay
+    if (isTransitioning) {
+        fadeAlpha += FADE_SPEED * fadeDirection;
+        if (fadeDirection === 1 && fadeAlpha >= 255) {
+            fadeAlpha = 255; fadeDirection = -1;
+            state = targetState; time = 0;
+            updateUI();
+            document.getElementById("label").style.opacity = 1;
+            document.getElementById("insight-bar").style.opacity = 1;
+            document.getElementById("act-indicator").style.opacity = 1;
+            if (state !== 9) document.getElementById("nav-hint").style.opacity = 1;
+        } else if (fadeDirection === -1 && fadeAlpha <= 0) {
+            fadeAlpha = 0; isTransitioning = false; fadeDirection = 0;
+        }
+        push(); fill(10, 5, 5, fadeAlpha); noStroke(); rect(0, 0, width, height); pop();
+    }
+}
+
+// ============================================================
+// ACT I: THE OBSERVATORY
+// ============================================================
+
+function drawUjjain() {
+    push();
+    translate(width/2, height/2 + 80);
+    scale(getScaleFactor());
+
+    // Ujjain Observatory Yantra (Instrument) silhouette
+    fill(20, 10, 10); stroke(229, 57, 53, 100); strokeWeight(2);
+    arc(0, 50, 400, 300, PI, TWO_PI); // Base dome
+    
+    // Measuring stairs
+    for(let i=0; i<5; i++) {
+        rect(-40 - i*20, -50 + i*20, 80 + i*40, 20);
+    }
+
+    // The Celestial Sphere turning above the observatory
+    noFill(); stroke(255, 202, 40, 50); strokeWeight(2);
+    ellipse(0, -150, 250);
+    ellipse(0, -150, 250, 60); // Equator
+    ellipse(0, -150, 60, 250); // Meridian
+
+    // Armillary rings turning
+    push();
+    translate(0, -150);
+    rotate(time * 0.5);
+    stroke(255, 202, 40, 150);
+    ellipse(0, 0, 200, 20);
+    fill(255); noStroke(); ellipse(100, 0, 8); ellipse(-100, 0, 8);
+    pop();
+
+    fill(255); noStroke(); textAlign(CENTER); textSize(24); letterSpacing = 3;
+    text("THE MERIDIAN OF THE ANCIENT WORLD", 0, 100);
+    pop();
+}
+
+function drawGravity() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    let r = 120;
+    
+    // Earth Sphere
+    drawingContext.shadowBlur = 40; drawingContext.shadowColor = '#E53935';
+    fill(40, 20, 20); stroke(229, 57, 53); strokeWeight(2);
+    ellipse(0, 0, r*2);
+    drawingContext.shadowBlur = 0;
+
+    // Gravity field (concentric pulsing rings)
+    noFill(); stroke(229, 57, 53, 100 - (time*50)%100);
+    for(let i=1; i<4; i++) {
+        let pullR = r + (time*20 % 60) + i*40;
+        ellipse(0, 0, pullR*2);
+    }
+
+    // Objects falling from all directions
+    fill(255, 202, 40); noStroke();
+    for(let i=0; i<8; i++) {
+        let a = TWO_PI * i / 8;
+        // Dist decreases over time, snapping back to out space
+        let dist = 300 - (time*100 + i*40) % 180; 
+        if (dist > r) {
+            ellipse(cos(a)*dist, sin(a)*dist, 10);
+            
+            // Trail
+            stroke(255, 202, 40, 100); strokeWeight(1);
+            line(cos(a)*dist, sin(a)*dist, cos(a)*(dist+20), sin(a)*(dist+20));
+            noStroke();
+        }
+    }
+
+    fill(255); noStroke(); textAlign(CENTER); textSize(24);
+    text("The Attraction of the Earth", 0, r + 80);
+    pop();
+}
+
+// ============================================================
+// ACT II: THE INVENTION OF ZERO
+// ============================================================
+
+function drawShunya() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // Massive glowing ZERO ring
+    drawingContext.shadowBlur = 80; drawingContext.shadowColor = '#FFCA28';
+    noFill(); stroke(255, 202, 40); strokeWeight(12);
+    ellipse(0, 0, 180, 220); // Slightly elliptical
+    drawingContext.shadowBlur = 0;
+
+    // Inside the void
+    fill(10, 5, 5, 200); noStroke();
+    ellipse(0, 0, 170, 210);
+
+    // Brahmagupta's rules floating around
+    let rules = ["1 - 1 = 0", "A + 0 = A", "A - 0 = A", "A × 0 = 0"];
+    
+    for(let i=0; i<4; i++) {
+        let a = TWO_PI * i / 4 + time*0.5;
+        let rx = cos(a) * 200;
+        let ry = sin(a) * 200;
+        
+        fill(255, 202, 40, 200); textSize(24); textAlign(CENTER, CENTER);
+        text(rules[i], rx, ry);
+    }
+
+    // "Shunya" text in center
+    fill(255); textSize(36); letterSpacing = 2;
+    text("0", 0, -15);
+    fill(229, 57, 53); textSize(20);
+    text("SHUNYA", 0, 25);
+
+    fill(255); textSize(20); textAlign(CENTER);
+    text("Nothingness became a Number.", 0, 220);
+    pop();
+}
+
+function drawFortunesDebts() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // Balance scale
+    stroke(255, 50); strokeWeight(4);
+    line(0, -100, 0, 150); // Pillar
+    
+    let tilt = sin(time * 1.5) * 0.2; // Slight wobble
+    push();
+    translate(0, -100);
+    rotate(tilt);
+    line(-150, 0, 150, 0); // Beam
+    
+    // Left Pan (Fortunes / Positives)
+    stroke(255, 202, 40); fill(255, 202, 40, 20);
+    line(-150, 0, -180, 80); line(-150, 0, -120, 80); arc(-150, 80, 60, 20, 0, PI);
+    fill(255, 202, 40); noStroke(); textSize(36); textAlign(CENTER, CENTER);
+    text("+", -150, 60);
+    textSize(18); text("Fortune", -150, 120);
+
+    // Right Pan (Debts / Negatives)
+    stroke(229, 57, 53); fill(229, 57, 53, 20);
+    line(150, 0, 120, 80); line(150, 0, 180, 80); arc(150, 80, 60, 20, 0, PI);
+    fill(229, 57, 53); noStroke(); textSize(36);
+    text("-", 150, 60);
+    textSize(18); text("Debt", 150, 120);
+    pop();
+
+    // Logic rules
+    fill(255); noStroke(); textSize(24); textAlign(CENTER);
+    
+    // Cycle through the logic texts
+    let logicPhase = Math.floor(time * 0.5) % 3;
+    if (logicPhase === 0) {
+        fill(255, 202, 40); text("Positive × Positive = Positive", 0, 180);
+        fill(255, 150); textSize(16); text("(A fortune times a fortune is a fortune)", 0, 210);
+    } else if (logicPhase === 1) {
+        fill(229, 57, 53); text("Positive × Negative = Negative", 0, 180);
+        fill(255, 150); textSize(16); text("(A fortune times a debt is a debt)", 0, 210);
+    } else {
+        fill(255); text("Negative × Negative = Positive", 0, 180);
+        fill(255, 150); textSize(16); text("(A debt times a debt is a fortune)", 0, 210);
+    }
+
+    pop();
+}
+
+function drawDivByZero() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    fill(255); noStroke(); textAlign(CENTER); textSize(48);
+    text("x", 0, -50);
+    stroke(255); strokeWeight(4);
+    line(-30, -30, 30, -30);
+    
+    // Divisor shrinking towards zero
+    let divisor = Math.max(0.0001, map(sin(time), -1, 1, 0, 5)).toFixed(4);
+    
+    fill(255, 202, 40); noStroke();
+    text(divisor, 0, 20);
+
+    // The result shooting to infinity
+    let result = (1 / divisor);
+    
+    fill(66, 165, 245); textSize(36);
+    text("=  " + (result > 1000 ? "∞" : Math.floor(result)), 0, 90);
+
+    // Visual lines exploding outward as denominator approaches 0
+    if (divisor < 1.0) {
+        let intensity = map(divisor, 1, 0, 0, 255);
+        stroke(66, 165, 245, intensity); strokeWeight(2);
+        for(let i=0; i<12; i++) {
+            let a = TWO_PI * i / 12 + time;
+            let len = map(divisor, 1, 0, 100, 400);
+            line(cos(a)*100, 90 + sin(a)*100, cos(a)*len, 90 + sin(a)*len);
+        }
+    }
+
+    fill(255, 150); noStroke(); textSize(18);
+    text("Approaching the Infinite Void (Khacheda)", 0, 190);
+    pop();
+}
+
+// ============================================================
+// ACT III: GEOMETRY & ALGEBRA
+// ============================================================
+
+function drawCyclicQuad() {
+    push();
+    translate(width/2, height/2 + 20);
+    scale(getScaleFactor());
+
+    let r = 140;
+    
+    // Circle
+    stroke(255, 50); strokeWeight(2); noFill();
+    ellipse(0, 0, r*2);
+
+    // 4 points changing dynamically on the circle
+    let pA = time * 0.2;
+    let pB = PI/2 + sin(time*0.5)*0.2;
+    let pC = PI + time*0.1;
+    let pD = 3*PI/2 - cos(time*0.3)*0.2;
+
+    let pts = [
+        {x: cos(pA)*r, y: sin(pA)*r, l: "A"},
+        {x: cos(pB)*r, y: sin(pB)*r, l: "B"},
+        {x: cos(pC)*r, y: sin(pC)*r, l: "C"},
+        {x: cos(pD)*r, y: sin(pD)*r, l: "D"}
+    ];
+
+    // Draw Quadrilateral
+    stroke(66, 165, 245); fill(66, 165, 245, 40); strokeWeight(3);
+    beginShape();
+    for(let p of pts) vertex(p.x, p.y);
+    endShape(CLOSE);
+
+    // Labels & Points
+    for(let p of pts) {
+        fill(255); noStroke(); ellipse(p.x, p.y, 8);
+        textSize(18); textAlign(CENTER, CENTER);
+        text(p.l, p.x * 1.2, p.y * 1.2); // Offset label
+    }
+
+    // Side length labels
+    fill(255, 202, 40);
+    text("a", (pts[0].x + pts[1].x)/2 * 0.8, (pts[0].y + pts[1].y)/2 * 0.8);
+    text("b", (pts[1].x + pts[2].x)/2 * 0.8, (pts[1].y + pts[2].y)/2 * 0.8);
+    text("c", (pts[2].x + pts[3].x)/2 * 0.8, (pts[2].y + pts[3].y)/2 * 0.8);
+    text("d", (pts[3].x + pts[0].x)/2 * 0.8, (pts[3].y + pts[0].y)/2 * 0.8);
+
+    // Formula Box
+    fill(10, 5, 5, 200); stroke(255, 202, 40); strokeWeight(2);
+    rect(-220, r + 30, 440, 60, 10);
+    
+    fill(255); noStroke(); textSize(22); textAlign(CENTER, CENTER);
+    text("Area = √ (s-a)(s-b)(s-c)(s-d)", 0, r + 60);
+
+    pop();
+}
+
+function drawPerpendicularDiag() {
+    push();
+    translate(width/2, height/2 + 20);
+    scale(getScaleFactor());
+
+    let r = 150;
+    
+    stroke(255, 30); strokeWeight(2); noFill();
+    ellipse(0, 0, r*2);
+
+    // Brahmagupta's Theorem: Diagonals are perpendicular.
+    // Create a cyclic quad with perpendicular diagonals.
+    // Easiest way: pick an intersection point, draw axes, find circle intersections.
+    let intersectX = sin(time*0.5)*40;
+    let intersectY = cos(time*0.8)*40;
+
+    // Find the 4 points where horizontal/vertical lines through intersect hit circle
+    // x^2 + y^2 = r^2
+    let dx = sqrt(r*r - intersectY*intersectY);
+    let dy = sqrt(r*r - intersectX*intersectX);
+
+    let pts = [
+        {x: -dx, y: intersectY}, // Left
+        {x: intersectX, y: -dy}, // Top
+        {x: dx, y: intersectY},  // Right
+        {x: intersectX, y: dy}   // Bottom
+    ];
+
+    // Quadrilateral
+    stroke(66, 165, 245); fill(66, 165, 245, 20); strokeWeight(3);
+    beginShape();
+    vertex(pts[0].x, pts[0].y); vertex(pts[1].x, pts[1].y);
+    vertex(pts[2].x, pts[2].y); vertex(pts[3].x, pts[3].y);
+    endShape(CLOSE);
+
+    // Perpendicular Diagonals
+    stroke(255, 202, 40); strokeWeight(2);
+    line(pts[0].x, pts[0].y, pts[2].x, pts[2].y);
+    line(pts[1].x, pts[1].y, pts[3].x, pts[3].y);
+
+    // 90 Degree box at intersection
+    stroke(255); noFill();
+    rect(intersectX, intersectY, 15, -15);
+
+    // The Theorem Line (Perpendicular to bottom side, bisects top side)
+    // Dropping perp from intersection to side [pts[2], pts[3]]
+    // For visual simplicity, draw a line from intersection down to a side
+    let mx = (pts[1].x + pts[0].x)/2; 
+    let my = (pts[1].y + pts[0].y)/2;
+    stroke(229, 57, 53); strokeWeight(3);
+    line(intersectX, intersectY, mx, my); // Bisecting line extending
+    fill(229, 57, 53); noStroke(); ellipse(mx, my, 8); // Bisection point
+
+    fill(255); noStroke(); textSize(18); textAlign(CENTER);
+    text("If diagonals intersect at 90°...", 0, r + 50);
+    fill(229, 57, 53);
+    text("The perpendicular bisects the opposite side.", 0, r + 80);
+
+    pop();
+}
+
+function drawPellsEquation() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // Diophantine Grid
+    stroke(255, 20); strokeWeight(1);
+    for(let i=-200; i<=200; i+=20) {
+        line(i, -150, i, 150);
+        line(-200, i, 200, i);
+    }
+    stroke(255, 50); strokeWeight(2);
+    line(0, -150, 0, 150); // Y axis
+    line(-200, 0, 200, 0); // X axis
+
+    fill(255); noStroke(); textAlign(CENTER); textSize(36);
+    text("x² - Ny² = 1", 0, -180);
+
+    // Draw Hyperbola (approximation for visual)
+    stroke(66, 165, 245); strokeWeight(3); noFill();
+    beginShape();
+    for(let y=-150; y<=150; y+=5) {
+        let x = sqrt(1 + 0.05 * y*y) * 40; // Scaled hyperbola
+        vertex(x, y);
+    }
+    endShape();
+    beginShape();
+    for(let y=-150; y<=150; y+=5) {
+        let x = -sqrt(1 + 0.05 * y*y) * 40;
+        vertex(x, y);
+    }
+    endShape();
+
+    // Pulse Chakravala (Cyclic) Integer Search
+    let searchY = (time * 50) % 150;
+    let searchX = sqrt(1 + 0.05 * searchY*searchY) * 40;
+    
+    // Snap to grid visualization
+    fill(255, 202, 40); noStroke();
+    ellipse(searchX, searchY, 15);
+    ellipse(searchX, -searchY, 15);
+
+    noFill(); stroke(255, 202, 40, 150); strokeWeight(2);
+    ellipse(searchX, searchY, 30 + sin(time*10)*10);
+
+    fill(255, 202, 40); noStroke(); textSize(20);
+    text("Chakravala (Cyclic Method)", 0, 190);
+    fill(255, 150); textSize(16);
+    text("Finding pure integer solutions 1,000 years before Europe.", 0, 220);
+    pop();
+}
+
+function drawBaghdad() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // The Silk Road / Journey to Baghdad
+    
+    // Ujjain Node
+    fill(229, 57, 53); stroke(255); strokeWeight(2);
+    ellipse(-200, 50, 30);
+    fill(255); noStroke(); textSize(16); textAlign(CENTER); text("UJJAIN\n(India)", -200, 90);
+
+    // Baghdad Node
+    fill(66, 165, 245); stroke(255); strokeWeight(2);
+    ellipse(200, -50, 40);
+    fill(255); noStroke(); text("BAGHDAD\n(House of Wisdom)", 200, 10);
+
+    // The Path
+    noFill(); stroke(255, 202, 40); strokeWeight(4); drawingContext.setLineDash([10, 10]);
+    bezier(-200, 50, -100, -100, 100, 100, 200, -50);
+    drawingContext.setLineDash([]);
+
+    // Numbers traveling along the path (0, 1, 2, 3...)
+    let t = (time * 0.3) % 1.0;
+    let px = bezierPoint(-200, -100, 100, 200, t);
+    let py = bezierPoint(50, -100, 100, -50, t);
+    
+    fill(255, 202, 40); noStroke(); ellipse(px, py, 40);
+    fill(0); textSize(24); textAlign(CENTER, CENTER); text("0", px, py);
+
+    let t2 = ((time * 0.3) - 0.15) % 1.0;
+    if (t2 > 0) {
+        let px2 = bezierPoint(-200, -100, 100, 200, t2);
+        let py2 = bezierPoint(50, -100, 100, -50, t2);
+        fill(255); ellipse(px2, py2, 30);
+        fill(0); text("9", px2, py2);
+    }
+
+    fill(255); noStroke(); textSize(24);
+    text("The Translation of the 'Sindhind'", 0, 150);
+    fill(255, 202, 40); textSize(16);
+    text("Zero and the numbers 0-9 enter the Islamic world.", 0, 180);
+    pop();
+}
+
+function drawLegacy() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // Massive eternal Zero
+    drawingContext.shadowBlur = 100; drawingContext.shadowColor = '#FFCA28';
+    stroke(255, 202, 40); strokeWeight(8); noFill();
+    ellipse(0, 0, 200);
+    drawingContext.shadowBlur = 0;
+
+    // Binary code (0s and 1s) expanding outward from the zero
+    noStroke(); textSize(14); textAlign(CENTER, CENTER);
+    for(let i=0; i<60; i++) {
+        let a = TWO_PI * i / 60;
+        let dist = 110 + ((time*50) + i*15) % 300;
+        let alpha = map(dist, 110, 400, 255, 0);
+        
+        fill(66, 165, 245, alpha);
+        let bin = random() > 0.5 ? "0" : "1";
+        text(bin, cos(a)*dist, sin(a)*dist);
+    }
+
+    fill(255); noStroke(); textSize(48); letterSpacing = 2;
+    text("0", 0, 0);
+
+    fill(255); textSize(32); letterSpacing = 3;
+    text("THE FATHER OF ZERO", 0, 230);
+    fill(255, 150); textSize(18);
+    text("He gave humanity the code to build the future.", 0, 270);
+    pop();
+}
+</script>
+<script src="../../capacitor.js"></script><script src="../../js/app.js"></script></body>
+</html>

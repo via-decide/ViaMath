@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViaMath | The Blueprint (Plato)</title>
+    <script src="../../js/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0; padding: 0; background-color: #0A0F1A; overflow: hidden;
+            color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        canvas { display: block; }
+
+        /* Act Indicator */
+        #act-indicator {
+            position: absolute; top: 30px; left: 30px;
+            color: #E2B714; font-size: 14px; font-weight: bold; letter-spacing: 3px;
+            text-transform: uppercase; z-index: 10;
+            transition: opacity 0.4s ease-in-out; opacity: 1;
+        }
+
+        /* Main Info Box */
+        #label {
+            position: absolute; top: 60px; left: 30px;
+            letter-spacing: 1px; border-left: 4px solid #E2B714; 
+            padding-left: 20px; z-index: 10;
+            background: rgba(10, 15, 26, 0.85); padding-right: 20px;
+            padding-bottom: 15px; border-radius: 0 10px 10px 0;
+            backdrop-filter: blur(8px); max-width: 80%;
+            transition: opacity 0.4s ease-in-out; opacity: 1;
+        }
+        h1 { margin: 0; font-size: 26px; font-weight: 300; text-transform: uppercase; color: #fff; }
+        #subtitle { color: #E2B714; font-size: 16px; margin-top: 5px; font-weight: bold; letter-spacing: 2px; }
+        #description { color: #ccc; font-size: 15px; margin-top: 10px; max-width: 450px; line-height: 1.6; }
+
+        /* Insight Bar */
+        #insight-bar {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: rgba(69, 162, 158, 0.1);
+            border-top: 1px solid rgba(69, 162, 158, 0.4);
+            padding: 15px 0; text-align: center;
+            font-size: 16px; color: #ddd; letter-spacing: 1px;
+            font-family: monospace; backdrop-filter: blur(5px);
+            transition: opacity 0.4s ease-in-out; opacity: 1;
+        }
+        .highlight { color: #E2B714; font-weight: bold; }
+
+        /* Tap hint & Logo */
+        #nav-hint {
+            position: absolute; top: 30px; right: 30px;
+            color: #777; font-size: 12px; letter-spacing: 2px;
+            text-transform: uppercase; cursor: pointer;
+            transition: opacity 0.4s ease-in-out; text-align: right;
+        }
+        .viamath-logo { color: #45A29E; font-weight: bold; font-size: 16px; margin-bottom: 5px; letter-spacing: 3px;}
+
+        @media (max-width: 700px) {
+            #act-indicator { top: 20px; left: 10px; font-size: 12px; }
+            #label { top: 45px; left: 10px; padding-left: 15px; max-width: 90%; }
+            h1 { font-size: 20px; }
+            #subtitle { font-size: 14px; }
+            #description { font-size: 13px; max-width: 100%; }
+            #insight-bar { font-size: 12px; padding: 10px 0; }
+            #nav-hint { top: 10px; right: 10px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body onclick="nextScreen()">
+    <div id="nav-hint">
+        <div class="viamath-logo">VIAMATH</div>
+        Tap anywhere to advance ➔
+    </div>
+    
+    <div id="act-indicator">ACT I: THE PHILOSOPHY</div>
+
+    <div id="label">
+        <h1 id="title">Title</h1>
+        <p id="subtitle">Subtitle</p>
+        <p id="description">Description goes here.</p>
+    </div>
+
+    <div id="insight-bar">
+        <span class="highlight">HISTORICAL INSIGHT:</span> <span id="insight-text">Loading...</span>
+    </div>
+
+<script>
+// Golden Ratio
+const PHI = (1 + Math.sqrt(5)) / 2;
+
+let time = 0;
+let state = 0;
+
+let isTransitioning = false;
+let fadeAlpha = 0;
+let fadeDirection = 0;
+let targetState = 0;
+const FADE_SPEED = 12;
+
+let particles = [];
+let solidsData = []; // Precomputed 3D solids
+
+const content = [
+    // ACT I: THE HISTORY & PHILOSOPHY
+    {
+        title: "The World of Forms", sub: "Plato (c. 428–348 BC)",
+        desc: "Plato believed that our physical world is flawed and messy. He proposed the 'World of Forms'—a higher, invisible dimension where perfect, pure concepts exist. A drawn circle is always jagged, but the IDEA of a circle is perfect.",
+        insight: "To Plato, Mathematics was the only way human minds could access this divine perfection."
+    },
+    {
+        title: "The Academy", sub: "Athens, 387 BC",
+        desc: "Plato founded the Academy in Athens, widely considered the first university in Western civilization. He believed that before one could study philosophy, ethics, or the universe, they must first master geometry.",
+        insight: "Above the doors to the Academy, he carved: 'Let no one ignorant of geometry enter here.'"
+    },
+    {
+        title: "The Sacred Tools", sub: "Compass & Straightedge",
+        desc: "Plato laid down a strict rule for true geometry: you may only use a straightedge (an unmarked ruler) and a compass. No measuring tape, no protractors. Pure logic and pure lines.",
+        insight: "This rule defined Euclidean geometry for the next 2,000 years."
+    },
+    // ACT II: THE MATHEMATICS
+    {
+        title: "The Right Angle Generator", sub: "Plato's Equation",
+        desc: "Pythagoras proved a² + b² = c² for a 90° angle. But Plato discovered a formula to GENERATE these perfect triangles using a single number 'm'. For any m > 1, the sides 2m, (m² - 1), and hypotenuse (m² + 1) will always form a perfect 90° angle.",
+        insight: "If m=2, the sides are 4, 3, and 5. A flawless algebraic engine for geometry."
+    },
+    {
+        title: "The Platonic Solids", sub: "The Perfection of 3D",
+        desc: "Plato became obsessed with regular, convex polyhedra—3D shapes where every face is identical, every edge is equal, and every corner meets at the same angle. Mathematically, there are exactly FIVE possible shapes. No more.",
+        insight: "These five flawless shapes are named 'The Platonic Solids' in his honor."
+    },
+    {
+        title: "Earth & Fire", sub: "Cube & Tetrahedron",
+        desc: "Plato assigned these perfect shapes to the classical elements. The Tetrahedron (4 triangular faces) is sharp and piercing—he assigned it to Fire. The Cube (6 square faces) is incredibly stable—he assigned it to Earth.",
+        insight: "He was attempting the first 'Theory of Everything,' linking atomic shapes to physics."
+    },
+    {
+        title: "Air & Water", sub: "Octahedron & Icosahedron",
+        desc: "The Octahedron (8 triangular faces) spins smoothly like the wind—he assigned it to Air. The Icosahedron (20 triangular faces) rolls like a liquid droplet—he assigned it to Water.",
+        insight: "Every element in the physical world was, to Plato, a microscopic geometric shape."
+    },
+    {
+        title: "The Quintessence", sub: "The Dodecahedron",
+        desc: "There was a 5th, final shape: The Dodecahedron (12 pentagonal faces). Because it was made of pentagons, it mathematically encoded the Golden Ratio (Φ). Plato believed this shape was too divine for Earth.",
+        insight: "He claimed the Gods used the Dodecahedron to arrange the constellations of the Cosmos."
+    },
+    {
+        title: "The Cosmic Architecture", sub: "Math is Reality",
+        desc: "Plato's philosophy changed humanity. He taught us that the universe isn't a random collection of rocks and dirt. It is a highly structured, mathematical masterpiece waiting to be decoded by the human mind.",
+        insight: "Mathematics isn't something we invent. It is something we discover. Welcome to ViaMath."
+    }
+];
+
+function setup() {
+    createCanvas(windowWidth, windowHeight);
+    // Setup background particles
+    for(let i=0; i<80; i++) {
+        particles.push({
+            x: random(width), y: random(height),
+            s: random(1, 4), vx: random(-0.2, 0.2), vy: random(-0.2, 0.2)
+        });
+    }
+    initSolids(); // Build 3D mathematical wireframes
+    updateUI();
+}
+
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+
+function nextScreen() {
+    if (isTransitioning) return;
+    isTransitioning = true;
+    fadeDirection = 1;
+    targetState = (state + 1) % 9;
+    
+    document.getElementById("label").style.opacity = 0;
+    document.getElementById("insight-bar").style.opacity = 0;
+    document.getElementById("nav-hint").style.opacity = 0;
+    document.getElementById("act-indicator").style.opacity = 0;
+}
+
+function updateUI() {
+    document.getElementById("title").innerText = content[state].title;
+    document.getElementById("subtitle").innerText = content[state].sub;
+    document.getElementById("description").innerText = content[state].desc;
+
+    let actInd = document.getElementById("act-indicator");
+    let labelBorder = document.getElementById("label");
+    
+    if (state < 3) {
+        actInd.innerText = "ACT I: THE ACADEMY & PHILOSOPHY";
+        actInd.style.color = "#E2B714"; // Classical Gold
+        labelBorder.style.borderLeftColor = "#E2B714";
+    } else {
+        actInd.innerText = "ACT II: THE GEOMETRY & THE COSMOS";
+        actInd.style.color = "#45A29E"; // Ethereal Teal
+        labelBorder.style.borderLeftColor = "#45A29E";
+    }
+
+    let span = document.querySelector('.highlight');
+    if (state < 3) {
+        span.innerText = "PHILOSOPHICAL INSIGHT:"; span.style.color = "#E2B714";
+    } else if (state === 8) {
+        span.innerText = "REFLECTION:"; span.style.color = "#45A29E";
+    } else {
+        span.innerText = "GEOMETRIC LAW:"; span.style.color = "#45A29E";
+    }
+    document.getElementById("insight-text").innerText = content[state].insight;
+}
+
+// Global Scalar for Mobile Responsiveness
+function getScaleFactor() { return min(1, width / 800); }
+
+function draw() {
+    background(10, 15, 26); // Deep Indigo/Space Night
+
+    // Abstract classical grid
+    stroke(255, 6); strokeWeight(1);
+    for (let i = 0; i < width; i += 80) line(i, 0, i, height);
+    for (let j = 0; j < height; j += 80) line(0, j, width, j);
+
+    time += 0.02;
+
+    // Ambient floating dust
+    for(let p of particles) {
+        p.x += p.vx; p.y += p.vy;
+        if(p.x < 0) p.x = width; if(p.x > width) p.x = 0;
+        if(p.y < 0) p.y = height; if(p.y > height) p.y = 0;
+        fill(69, 162, 158, 50 + sin(time*3+p.x)*50); noStroke();
+        ellipse(p.x, p.y, p.s);
+    }
+
+    // State Router
+    if      (state === 0) drawWorldOfForms();
+    else if (state === 1) drawAcademy();
+    else if (state === 2) drawSacredTools();
+    else if (state === 3) drawPlatoEquation();
+    else if (state === 4) drawFiveSolidsIntro();
+    else if (state === 5) drawEarthAndFire();
+    else if (state === 6) drawAirAndWater();
+    else if (state === 7) drawDodecahedron();
+    else if (state === 8) drawLegacy();
+
+    // Cinematic fade overlay
+    if (isTransitioning) {
+        fadeAlpha += FADE_SPEED * fadeDirection;
+        if (fadeDirection === 1 && fadeAlpha >= 255) {
+            fadeAlpha = 255; fadeDirection = -1;
+            state = targetState; time = 0;
+            updateUI();
+            document.getElementById("label").style.opacity = 1;
+            document.getElementById("insight-bar").style.opacity = 1;
+            document.getElementById("act-indicator").style.opacity = 1;
+            if (state !== 8) document.getElementById("nav-hint").style.opacity = 1;
+        } else if (fadeDirection === -1 && fadeAlpha <= 0) {
+            fadeAlpha = 0; isTransitioning = false; fadeDirection = 0;
+        }
+        push(); fill(10, 15, 26, fadeAlpha); noStroke(); rect(0, 0, width, height); pop();
+    }
+}
+
+// ============================================================
+// ACT I: THE PHILOSOPHY
+// ============================================================
+
+function drawWorldOfForms() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    let r = 180;
+    
+    // Messy, human-drawn circle (Physical World)
+    stroke(255, 80); strokeWeight(2); noFill();
+    beginShape();
+    for(let a=0; a<TWO_PI; a+=0.1) {
+        let noiseFactor = noise(cos(a)*2, sin(a)*2, time*0.5) * 30 - 15;
+        vertex(cos(a)*(r+noiseFactor) - 150, sin(a)*(r+noiseFactor));
+    }
+    endShape(CLOSE);
+
+    // Flawless, perfect mathematical circle (World of Forms)
+    drawingContext.shadowBlur = 40;
+    drawingContext.shadowColor = '#E2B714';
+    stroke(226, 183, 20, 200 + sin(time*4)*55); strokeWeight(3); noFill();
+    ellipse(150, 0, r*2);
+    drawingContext.shadowBlur = 0;
+
+    // Glowing core of the perfect circle
+    fill(226, 183, 20, 100); noStroke(); ellipse(150, 0, 10);
+
+    // Labels
+    fill(255, 150); noStroke(); textSize(18); textAlign(CENTER);
+    text("The Flawed Shadow", -150, r + 40);
+    fill(226, 183, 20);
+    text("The Perfect Form", 150, r + 40);
+
+    pop();
+}
+
+function drawAcademy() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // Greek Temple Columns (Abstract)
+    fill(255, 30); noStroke();
+    rect(-250, -200, 40, 400); rect(210, -200, 40, 400); // Pillars
+    rect(-300, -250, 600, 50); // Roof Base
+    triangle(-300, -250, 300, -250, 0, -400); // Triangle Pediment
+
+    // Sacred Inscription
+    fill(226, 183, 20, 150 + sin(time*2)*100); textAlign(CENTER); textSize(24);
+    text("ΑΓΕΩΜΕΤΡΗΤΟΣ ΜΗΔΕΙΣ ΕΙΣΙΤΩ", 0, -180);
+    
+    fill(255, 150); textSize(16);
+    text("Let no one ignorant of geometry enter.", 0, -150);
+
+    // Geometry forming inside the Academy
+    let s = 100 + sin(time)*20;
+    stroke(69, 162, 158, 150); strokeWeight(2); noFill();
+    rotate(time*0.5);
+    rect(-s/2, -s/2, s, s);
+    ellipse(0, 0, s*1.414);
+    triangle(0, -s, s*0.866, s*0.5, -s*0.866, s*0.5);
+    pop();
+}
+
+function drawSacredTools() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    let r = 200;
+    let t = (time % 4) / 4; // Loop from 0 to 1
+
+    // Background completed shapes (faint)
+    stroke(255, 20); strokeWeight(2); noFill();
+    ellipse(-100, 0, r*2); ellipse(100, 0, r*2);
+    line(-100, -r, -100, r); line(100, -r, 100, r);
+
+    // Active Compass Drawing
+    let currentAngle = map(t, 0, 1, -PI, PI);
+    stroke(226, 183, 20); strokeWeight(4);
+    arc(0, 0, r*2, r*2, -PI, currentAngle);
+    
+    // Compass Arm
+    stroke(255); strokeWeight(2);
+    line(0, 0, cos(currentAngle)*r, sin(currentAngle)*r);
+    fill(226, 183, 20); noStroke();
+    ellipse(0, 0, 12); ellipse(cos(currentAngle)*r, sin(currentAngle)*r, 8);
+
+    // Active Straightedge Drawing
+    let lineEndX = map(t, 0, 1, -300, 300);
+    stroke(69, 162, 158); strokeWeight(4);
+    line(-300, r + 40, lineEndX, r + 40);
+
+    fill(226, 183, 20); textSize(18); textAlign(CENTER); noStroke();
+    text("COMPASS (Arcs)", 0, -r - 40);
+    fill(69, 162, 158);
+    text("STRAIGHTEDGE (Lines)", 0, r + 80);
+    pop();
+}
+
+// ============================================================
+// ACT II: THE MATHEMATICS (PLATO'S EQUATION & SOLIDS)
+// ============================================================
+
+function drawPlatoEquation() {
+    push();
+    translate(width/2, height/2 + 80);
+    scale(getScaleFactor());
+
+    // Cycle m through integers: 2, 3, 4
+    let cycle = (time * 0.4) % 3;
+    let m = 2;
+    if (cycle > 1 && cycle < 2) m = 3;
+    if (cycle >= 2) m = 4;
+
+    // Plato's Formula calculations
+    let sideA = 2 * m;
+    let sideB = (m * m) - 1;
+    let hypC = (m * m) + 1;
+
+    // Visual scale multiplier to fit nicely on screen
+    let sMult = 180 / hypC; 
+    let drawA = sideA * sMult;
+    let drawB = sideB * sMult;
+
+    // Origin point is bottom-left of the right triangle
+    let ptX = -drawA/2;
+    let ptY = drawB/2;
+
+    // Draw Right Angle Box at P
+    stroke(226, 183, 20); strokeWeight(3); noFill();
+    rect(ptX, ptY - 20, 20, 20);
+    fill(226, 183, 20); noStroke(); textSize(18); textAlign(CENTER);
+    text("90° (P)", ptX - 30, ptY + 25);
+
+    // Draw Triangle
+    stroke(255); strokeWeight(4); fill(69, 162, 158, 40);
+    triangle(ptX, ptY, ptX + drawA, ptY, ptX, ptY - drawB);
+
+    // Labels for Sides
+    fill(255); noStroke(); textSize(22); textAlign(CENTER);
+    text("2m", ptX + drawA/2, ptY + 30);
+    textAlign(RIGHT);
+    text("m² - 1", ptX - 15, ptY - drawB/2);
+    textAlign(LEFT);
+    fill(69, 162, 158);
+    text("m² + 1", ptX + drawA/2 + 10, ptY - drawB/2 - 10);
+
+    // Math Engine Display
+    fill(15, 20, 35, 200); stroke(69, 162, 158); strokeWeight(2);
+    rect(-200, -220, 400, 110, 10);
+    
+    fill(226, 183, 20); noStroke(); textAlign(CENTER); textSize(24);
+    text("m = " + m, 0, -185);
+    
+    fill(255); textSize(20);
+    let eqStr = "Sides: " + sideA + ", " + sideB + " | Hypotenuse: " + hypC;
+    text(eqStr, 0, -150);
+    
+    // Check math verification
+    fill(100, 255, 100); textSize(16);
+    text("(" + sideA + "² + " + sideB + "² = " + hypC + "²)", 0, -125);
+    pop();
+}
+
+function drawFiveSolidsIntro() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    let numSolids = 5;
+    let names = ["Tetrahedron", "Cube", "Octahedron", "Icosahedron", "Dodecahedron"];
+    let faces = ["4 Faces", "6 Faces", "8 Faces", "20 Faces", "12 Faces"];
+
+    for (let i = 0; i < numSolids; i++) {
+        let x = map(i, 0, numSolids-1, -350, 350);
+        
+        push();
+        translate(x, 0);
+        // Slowly spin all 5 identically to show symmetry
+        render3DSolid(solidsData[i], time, time*0.5, 50, color(69, 162, 158, 150));
+        
+        fill(255, 200); noStroke(); textAlign(CENTER); textSize(14);
+        text(names[i], 0, 80);
+        fill(226, 183, 20); textSize(12);
+        text(faces[i], 0, 100);
+        pop();
+    }
+
+    fill(255); textAlign(CENTER); textSize(22); noStroke();
+    text("The Only 5 Perfect 3D Shapes in Existence.", 0, -120);
+    pop();
+}
+
+function drawEarthAndFire() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // Tetrahedron (Fire)
+    push();
+    translate(-200, 0);
+    drawingContext.shadowBlur = 40; drawingContext.shadowColor = '#FF4500'; // Orange Fire
+    render3DSolid(solidsData[0], time*1.5, time*1.2, 120, color(255, 69, 0, 200));
+    drawingContext.shadowBlur = 0;
+    fill(255); noStroke(); textAlign(CENTER); textSize(24); text("FIRE", 0, 180);
+    fill(255, 150); textSize(16); text("Sharp & Piercing", 0, 210);
+    pop();
+
+    // Cube (Earth)
+    push();
+    translate(200, 0);
+    drawingContext.shadowBlur = 40; drawingContext.shadowColor = '#8B4513'; // Brown Earth
+    render3DSolid(solidsData[1], time*0.5, time*0.8, 100, color(139, 69, 19, 200));
+    drawingContext.shadowBlur = 0;
+    fill(255); noStroke(); textAlign(CENTER); textSize(24); text("EARTH", 0, 180);
+    fill(255, 150); textSize(16); text("Solid & Stable", 0, 210);
+    pop();
+
+    pop();
+}
+
+function drawAirAndWater() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // Octahedron (Air)
+    push();
+    translate(-200, 0);
+    drawingContext.shadowBlur = 40; drawingContext.shadowColor = '#F0F8FF'; // White/Blue Air
+    render3DSolid(solidsData[2], time, time*2, 120, color(200, 230, 255, 200));
+    drawingContext.shadowBlur = 0;
+    fill(255); noStroke(); textAlign(CENTER); textSize(24); text("AIR", 0, 180);
+    fill(255, 150); textSize(16); text("Smooth & Mobile", 0, 210);
+    pop();
+
+    // Icosahedron (Water)
+    push();
+    translate(200, 0);
+    drawingContext.shadowBlur = 40; drawingContext.shadowColor = '#1E90FF'; // Deep Blue Water
+    render3DSolid(solidsData[3], time*0.8, time*1.1, 120, color(30, 144, 255, 200));
+    drawingContext.shadowBlur = 0;
+    fill(255); noStroke(); textAlign(CENTER); textSize(24); text("WATER", 0, 180);
+    fill(255, 150); textSize(16); text("Flowing & Rolling", 0, 210);
+    pop();
+
+    pop();
+}
+
+function drawDodecahedron() {
+    push();
+    translate(width/2, height/2 + 50);
+    scale(getScaleFactor());
+
+    // Giant Glowing Dodecahedron (The Cosmos)
+    drawingContext.shadowBlur = 60; drawingContext.shadowColor = '#E2B714';
+    
+    // Complex dual-axis rotation
+    render3DSolid(solidsData[4], time*0.4, time*0.7, 180, color(226, 183, 20, 255));
+    
+    drawingContext.shadowBlur = 0;
+
+    // Glowing core
+    fill(255, 255, 200, 80 + sin(time*4)*40); noStroke();
+    ellipse(0, 0, 100);
+
+    fill(255); noStroke(); textAlign(CENTER); textSize(28); letterSpacing = 4;
+    text("THE AETHER", 0, 240);
+    fill(69, 162, 158); textSize(18); letterSpacing = 2;
+    text("The Shape of the Universe", 0, 275);
+    pop();
+}
+
+function drawLegacy() {
+    push();
+    translate(width/2, height/2 + 30);
+    scale(getScaleFactor());
+
+    // Central Dodecahedron rotating slowly
+    stroke(226, 183, 20, 50);
+    render3DSolid(solidsData[4], time*0.2, time*0.3, 150, color(226, 183, 20, 80));
+
+    // The other 4 solids orbiting it
+    let orbitR = 280;
+    for(let i=0; i<4; i++) {
+        let a = TWO_PI * i/4 + time * 0.5;
+        let x = cos(a) * orbitR;
+        let y = sin(a) * orbitR * 0.4; // Elliptical 3D-ish orbit
+        
+        push();
+        translate(x, y);
+        // Color based on element
+        let cols = [color(255,69,0,150), color(139,69,19,150), color(200,230,255,150), color(30,144,255,150)];
+        render3DSolid(solidsData[i], time, time*1.5, 40, cols[i]);
+        pop();
+    }
+
+    fill(255); noStroke(); textAlign(CENTER); textSize(22); letterSpacing = 3;
+    text("MATHEMATICS IS REALITY", 0, 250);
+    pop();
+}
+
+// ============================================================
+// CUSTOM 3D PROJECTION ENGINE (BUILT FROM SCRATCH FOR P5.JS 2D)
+// ============================================================
+
+function initSolids() {
+    // 0: Tetrahedron, 1: Cube, 2: Octahedron, 3: Icosahedron, 4: Dodecahedron
+    
+    // 1. Tetrahedron
+    let tV = [[1,1,1], [1,-1,-1], [-1,1,-1], [-1,-1,1]];
+    let tE = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
+    solidsData.push({v: tV, e: tE});
+
+    // 2. Cube
+    let cV = [];
+    for(let i=-1; i<=1; i+=2) for(let j=-1; j<=1; j+=2) for(let k=-1; k<=1; k+=2) cV.push([i,j,k]);
+    let cE = [];
+    for(let i=0; i<8; i++) for(let j=i+1; j<8; j++) {
+        let diffs = abs(cV[i][0]-cV[j][0]) + abs(cV[i][1]-cV[j][1]) + abs(cV[i][2]-cV[j][2]);
+        if(diffs === 2) cE.push([i,j]); // Connect if they differ by exactly one coordinate
+    }
+    solidsData.push({v: cV, e: cE});
+
+    // 3. Octahedron
+    let oV = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    let oE = [];
+    for(let i=0; i<6; i++) for(let j=i+1; j<6; j++) {
+        if(abs(oV[i][0]+oV[j][0])!==0 || abs(oV[i][1]+oV[j][1])!==0 || abs(oV[i][2]+oV[j][2])!==0) {
+            if(oV[i][0]!== -oV[j][0] || oV[i][1]!== -oV[j][1] || oV[i][2]!== -oV[j][2]) oE.push([i,j]); // Connect if not exact opposites
+        }
+    }
+    solidsData.push({v: oV, e: oE});
+
+    // 4. Icosahedron
+    let iV = [];
+    let p = PHI;
+    iV.push([0,1,p],[0,-1,p],[0,1,-p],[0,-1,-p]);
+    iV.push([1,p,0],[-1,p,0],[1,-p,0],[-1,-p,0]);
+    iV.push([p,0,1],[-p,0,1],[p,0,-1],[-p,0,-1]);
+    let iE = [];
+    for(let i=0; i<12; i++) for(let j=i+1; j<12; j++) {
+        let d = dist3D(iV[i], iV[j]);
+        if(abs(d - 2.0) < 0.1) iE.push([i,j]); // Edge length is exactly 2 in this configuration
+    }
+    solidsData.push({v: iV, e: iE});
+
+    // 5. Dodecahedron
+    let dV = [];
+    let pInv = 1/PHI;
+    // 8 points of inscribed cube
+    for(let i=-1; i<=1; i+=2) for(let j=-1; j<=1; j+=2) for(let k=-1; k<=1; k+=2) dV.push([i,j,k]);
+    // 12 points of cross rectangles
+    dV.push([0,p,pInv],[0,-p,pInv],[0,p,-pInv],[0,-p,-pInv]);
+    dV.push([pInv,0,p],[-pInv,0,p],[pInv,0,-p],[-pInv,0,-p]);
+    dV.push([p,pInv,0],[-p,pInv,0],[p,-pInv,0],[-p,-pInv,0]);
+    let dE = [];
+    for(let i=0; i<20; i++) for(let j=i+1; j<20; j++) {
+        let d = dist3D(dV[i], dV[j]);
+        if(abs(d - (2*pInv)) < 0.1) dE.push([i,j]); // Edge length logic for Dodecahedron
+    }
+    solidsData.push({v: dV, e: dE});
+}
+
+function dist3D(v1, v2) {
+    return sqrt(pow(v1[0]-v2[0], 2) + pow(v1[1]-v2[1], 2) + pow(v1[2]-v2[2], 2));
+}
+
+function render3DSolid(solid, rotX, rotY, scaleAmt, edgeColor) {
+    let projected = [];
+    // Calculate projections
+    for(let i=0; i<solid.v.length; i++) {
+        let v = solid.v[i];
+        let x = v[0], y = v[1], z = v[2];
+        
+        // Rotate Y
+        let x1 = x * cos(rotY) - z * sin(rotY);
+        let z1 = x * sin(rotY) + z * cos(rotY);
+        // Rotate X
+        let y2 = y * cos(rotX) - z1 * sin(rotX);
+        let z2 = y * sin(rotX) + z1 * cos(rotX);
+        
+        projected.push({x: x1 * scaleAmt, y: y2 * scaleAmt, z: z2}); // Keep z for potential depth sorting
+    }
+
+    // Draw Edges
+    stroke(edgeColor);
+    strokeWeight(2.5);
+    for(let i=0; i<solid.e.length; i++) {
+        let p1 = projected[solid.e[i][0]];
+        let p2 = projected[solid.e[i][1]];
+        line(p1.x, p1.y, p2.x, p2.y);
+    }
+
+    // Draw Vertices (optional, glowing dots look cool)
+    fill(255, 200); noStroke();
+    for(let p of projected) {
+        ellipse(p.x, p.y, 4);
+    }
+}
+</script>
+<script src="../../capacitor.js"></script><script src="../../js/app.js"></script></body>
+</html>
